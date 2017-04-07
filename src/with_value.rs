@@ -5,7 +5,7 @@ use futures::{Future, Poll, Async};
 
 pub struct WithValue<V, C>
     where C: Context,
-          V: Any
+          V: Any + Sync
 {
     parent: Box<C>,
     val: V,
@@ -13,7 +13,7 @@ pub struct WithValue<V, C>
 
 impl<V, C> Context for WithValue<V, C>
     where C: Context,
-          V: Any
+          V: Any + Sync
 {
     fn deadline(&self) -> Option<Instant> {
         None
@@ -29,7 +29,7 @@ impl<V, C> Context for WithValue<V, C>
 
 impl<V, C> Future for WithValue<V, C>
     where C: Context,
-          V: Any
+          V: Any + Sync
 {
     type Item = ();
     type Error = ContextError;
@@ -62,7 +62,7 @@ impl<V, C> Future for WithValue<V, C>
 /// ```
 pub fn with_value<V, C>(parent: C, val: V) -> WithValue<V, C>
     where C: Context,
-          V: Any
+          V: Any + Sync
 {
     WithValue {
         parent: Box::new(parent),

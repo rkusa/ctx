@@ -48,7 +48,7 @@ impl Error for ContextError {
 }
 
 /// A Context carries a deadline, a cancelation Future, and other values across API boundaries.
-pub trait Context: Future<Item = (), Error = ContextError> {
+pub trait Context: Future<Item = (), Error = ContextError> where Self: Sync {
     /// Returns the time when work done on behalf of this context should be
     /// canceled. Successive calls to deadline return the same result.
     fn deadline(&self) -> Option<Instant> {
