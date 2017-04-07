@@ -53,7 +53,7 @@ impl<V, C> Future for WithValue<V, C>
 /// # Examples
 ///
 /// ```
-/// use context::{Context, with_value, background};
+/// use ctx::{Context, with_value, background};
 ///
 /// let a = with_value(background(), 42);
 /// let b = with_value(a, 1.0);

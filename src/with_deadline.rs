@@ -55,12 +55,12 @@ pub fn with_deadline<C>(parent: C, deadline: Instant) -> (WithDeadline<C>, Box<F
 /// # Example
 ///
 /// ```
-/// extern crate context;
+/// extern crate ctx;
 /// extern crate futures;
 ///
 /// use std::time::Duration;
 /// use std::thread;
-/// use context::{Context, ContextError, with_timeout, background};
+/// use ctx::{Context, ContextError, with_timeout, background};
 /// use futures::future::Future;
 ///
 /// fn main() {

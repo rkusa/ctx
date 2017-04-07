@@ -64,10 +64,10 @@ impl<C> Future for WithCancel<C>
 /// # Example
 ///
 /// ```
-/// extern crate context;
+/// extern crate ctx;
 /// extern crate futures;
 ///
-/// use context::{Context, ContextError, with_cancel, background};
+/// use ctx::{Context, ContextError, with_cancel, background};
 /// use futures::future::Future;
 ///
 /// fn main() {
