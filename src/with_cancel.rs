@@ -1,5 +1,3 @@
-extern crate futures;
-
 use std::sync::{Arc, Mutex};
 use std::time;
 use std::any::Any;
@@ -110,7 +108,7 @@ mod test {
     use std::time::Duration;
     use std::thread;
     use self::tokio_timer::Timer;
-    use withcancel::with_cancel;
+    use with_cancel::with_cancel;
     use {background, ContextError};
     use futures::Future;
 
