@@ -1,11 +1,11 @@
 [package]
 name = "ctx"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Markus Ast <m@rkusa.st>"]
 license = "MIT"
-repository = "https://github.com/tokio-rs/tokio-timer"
-homepage = "https://github.com/tokio-rs/tokio-timer"
-documentation = "https://docs.rs/tokio-timer"
+repository = "https://github.com/rkusa/ctx"
+homepage = "https://github.com/rkusa/ctx"
+documentation = "https://docs.rs/ctx"
 description = """
 Context defines a type, which carries deadlines, cancelation, and other request-scoped values across API boundaries and between processes.
 """
