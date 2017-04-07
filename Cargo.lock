@@ -3,7 +3,7 @@ name = "context"
 version = "0.1.0"
 dependencies = [
  "futures 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-timer 0.1.1 (git+https://github.com/tokio-rs/tokio-timer)",
+ "tokio-timer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -19,7 +19,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "tokio-timer"
 version = "0.1.1"
-source = "git+https://github.com/tokio-rs/tokio-timer#296b5c8124cc433662319cd799b87ec1acb2fc06"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "futures 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "slab 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -28,4 +28,4 @@ dependencies = [
 [metadata]
 "checksum futures 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "0ffa9721bfc26c0293ab2195bbf037aefb3951ece8d755e01fb90e0177acba79"
 "checksum slab 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "17b4fcaed89ab08ef143da37bc52adbcc04d4a69014f4c1208d6b51f0c47bc23"
-"checksum tokio-timer 0.1.1 (git+https://github.com/tokio-rs/tokio-timer)" = "<none>"
+"checksum tokio-timer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "86f33def658c14724fc13ec6289b3875a8152ee8ae767a5b1ccbded363b03db8"

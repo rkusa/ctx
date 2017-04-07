@@ -58,8 +58,8 @@ impl<C> Future for WithCancel<C>
     }
 }
 
-/// Returns a copy of parent as a new Future, which is closed when the returned cancel function is
-/// called or when the parent context's Future is resolved – whichever happens first.
+/// Returns a copy of parent as a new future, which is closed when the returned cancel function is
+/// called or when the parent context's future is resolved – whichever happens first.
 ///
 /// # Example
 ///
@@ -103,11 +103,9 @@ pub fn with_cancel<C>(parent: C) -> (WithCancel<C>, Box<Fn() + Send>)
 
 #[cfg(test)]
 mod test {
-    extern crate tokio_timer;
-
     use std::time::Duration;
     use std::thread;
-    use self::tokio_timer::Timer;
+    use tokio_timer::Timer;
     use with_cancel::with_cancel;
     use {background, ContextError};
     use futures::Future;

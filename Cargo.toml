@@ -5,6 +5,4 @@ authors = ["Markus Ast <m@rkusa.st>"]
 
 [dependencies]
 futures = "0.1"
-
-[dev-dependencies]
-tokio-timer = { git = "https://github.com/tokio-rs/tokio-timer" }
+tokio-timer = "0.1"

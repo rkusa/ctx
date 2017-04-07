@@ -1,4 +1,5 @@
 extern crate futures;
+extern crate tokio_timer;
 
 use std::error::Error;
 use std::fmt;
@@ -8,13 +9,16 @@ use futures::Future;
 
 mod with_value;
 mod with_cancel;
+mod with_deadline;
 pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
+pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
 #[derive(Debug, PartialEq)]
 pub enum ContextError {
     Canceled,
     DeadlineExceeded,
+    DeadlineTooLong,
 }
 
 impl fmt::Display for ContextError {
@@ -28,6 +32,7 @@ impl Error for ContextError {
         match *self {
             ContextError::Canceled => "context has been canceled",
             ContextError::DeadlineExceeded => "deadline has been exceeded",
+            ContextError::DeadlineTooLong => "requested deadline too long",
         }
     }
 }
