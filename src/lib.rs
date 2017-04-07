@@ -6,7 +6,10 @@ use std::any::Any;
 use std::time::Instant;
 use futures::{Future, Poll, Async};
 
-#[derive(Debug)]
+mod withcancel;
+pub use withcancel::{WithCancel, with_cancel};
+
+#[derive(Debug, PartialEq)]
 pub enum ContextError {
     Canceled,
     DeadlineExceeded,
@@ -45,14 +48,13 @@ pub trait Context: Future<Item = (), Error = ContextError> {
     /// ```
     /// use context::{Context, with_value, background};
     ///
-    /// let a = with_value(background(), "a", 42);
-    /// let b = with_value(a, "b", 1.0);
-    /// assert_eq!(b.value("a"), Some(&42));
-    /// assert_eq!(b.value("b"), Some(&1.0));
+    /// let a = with_value(background(), 42);
+    /// let b = with_value(a, 1.0);
+    /// assert_eq!(b.value(), Some(&42));
+    /// assert_eq!(b.value(), Some(&1.0));
     /// ```
-    fn value<I, T>(&self, _: I) -> Option<&T>
-        where I: Any + PartialEq,
-              T: Any
+    fn value<T>(&self) -> Option<&T>
+        where T: Any
     {
         None
     }
@@ -77,52 +79,32 @@ pub fn background() -> Background {
     BACKGROUND
 }
 
-pub struct WithValue<K, V, C>
+pub struct WithValue<V, C>
     where C: Context,
-          K: Any + PartialEq,
           V: Any
 {
     parent: Box<C>,
-    key: K,
     val: V,
 }
 
-impl<K, V, C> Context for WithValue<K, V, C>
+impl<V, C> Context for WithValue<V, C>
     where C: Context,
-          K: Any + PartialEq,
           V: Any
 {
     fn deadline(&self) -> Option<Instant> {
         None
     }
 
-    fn value<I, T>(&self, key: I) -> Option<&T>
-        where I: Any + PartialEq,
-              T: Any
+    fn value<T>(&self) -> Option<&T>
+        where T: Any
     {
-        let key_equals = {
-            let key_any = &key as &Any;
-            match key_any.downcast_ref::<K>() {
-                Some(k) => {
-                    println!("yes! {}", self.key == *k);
-                    self.key == *k
-                }
-                None => false,
-            }
-        };
-
-        if key_equals {
-            let val_any = &self.val as &Any;
-            val_any.downcast_ref::<T>()
-        } else {
-            self.parent.as_ref().value(key)
-        }
+        let val_any = &self.val as &Any;
+        val_any.downcast_ref::<T>().or_else(|| self.parent.as_ref().value())
     }
 }
 
-impl<K, V, C> Future for WithValue<K, V, C>
+impl<V, C> Future for WithValue<V, C>
     where C: Context,
-          K: Any + PartialEq,
           V: Any
 {
     type Item = ();
@@ -133,14 +115,30 @@ impl<K, V, C> Future for WithValue<K, V, C>
     }
 }
 
-pub fn with_value<K, V, C>(parent: C, key: K, val: V) -> WithValue<K, V, C>
+pub fn with_value<V, C>(parent: C, val: V) -> WithValue<V, C>
     where C: Context,
-          K: Any + PartialEq,
           V: Any
 {
     WithValue {
         parent: Box::new(parent),
-        key: key,
         val: val,
     }
+}
+
+#[test]
+fn same_type_test() {
+    let a = with_value(background(), 1);
+    let b = with_value(a, 2);
+    assert_eq!(b.value(), Some(&2));
+}
+
+#[test]
+fn same_type_workaround_test() {
+    #[derive(Debug, PartialEq)]
+    struct A(i32);
+    #[derive(Debug, PartialEq)]
+    struct B(i32);
+    let a = with_value(background(), B(1));
+    let b = with_value(a, B(2));
+    assert_eq!(b.value(), Some(&B(2)));
 }
