@@ -1,5 +1,5 @@
 ///! Ctx defines the Context type, which carries deadlines, cancelation
-///! [futures](https://github.com/alexcrichton/futures-rs), and other request-scoped values accross API
+///! [futures](https://github.com/alexcrichton/futures-rs), and other request-scoped values across API
 ///! boundaries and between processes.
 ///!
 ///! It is similar to Go's [context](https://blog.golang.org/context)

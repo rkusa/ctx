@@ -7,7 +7,7 @@ repository = "https://github.com/tokio-rs/tokio-timer"
 homepage = "https://github.com/tokio-rs/tokio-timer"
 documentation = "https://docs.rs/tokio-timer"
 description = """
-Context defines a type, which carries deadlines, cancelation, and other request-scoped values accross API boundaries and between processes.
+Context defines a type, which carries deadlines, cancelation, and other request-scoped values across API boundaries and between processes.
 """
 
 [dependencies]
