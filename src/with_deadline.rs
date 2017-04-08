@@ -1,34 +1,32 @@
 use std::time::{Duration, Instant};
 use std::any::Any;
-use {Context, InnerContext, ContextError, with_cancel, WithCancel};
+use {Context, InnerContext, ContextError, with_cancel};
 use futures::{Future, Poll, Async};
 use tokio_timer::{Timer, Sleep};
 
-pub struct WithDeadline<C>
-    where C: InnerContext
-{
-    parent: Context<WithCancel<C>>,
+pub struct WithDeadline<'a> {
+    parent: Context<'a>,
     when: Instant,
     deadline: Sleep,
 }
 
-impl<C> InnerContext for WithDeadline<C>
-    where C: InnerContext
-{
+impl<'a> InnerContext<'a> for WithDeadline<'a> {
     fn deadline(&self) -> Option<Instant> {
         Some(self.when)
     }
 
-    fn value<T>(&self) -> Option<T>
-        where T: Any + Clone
-    {
-        self.parent.value()
+    fn value(&self) -> Option<&Any> {
+        None
+    }
+
+    fn parent(&self) -> Option<Context<'a>> {
+        let clone = self.parent.clone();
+        let parent = clone.lock().unwrap();
+        parent.parent()
     }
 }
 
-impl<C> Future for WithDeadline<C>
-    where C: InnerContext
-{
+impl<'a> Future for WithDeadline<'a> {
     type Item = ();
     type Error = ContextError;
 
@@ -42,9 +40,9 @@ impl<C> Future for WithDeadline<C>
 }
 
 /// Returns `with_timeout(parent, deadline - Instant::now())`.
-pub fn with_deadline<C>(parent: Context<C>, deadline: Instant) -> (Context<WithDeadline<C>>, Box<Fn() + Send>)
-    where C: InnerContext
-{
+pub fn with_deadline<'a>(parent: Context<'a>,
+                         deadline: Instant)
+                         -> (Context<'a>, Box<Fn() + Send>) {
     with_timeout(parent, deadline - Instant::now())
 }
 
@@ -70,12 +68,10 @@ pub fn with_deadline<C>(parent: Context<C>, deadline: Instant) -> (Context<WithD
 ///     assert_eq!(ctx.wait().unwrap_err(), ContextError::DeadlineExceeded);
 /// }
 /// ```
-pub fn with_timeout<C>(parent: Context<C>, timeout: Duration) -> (Context<WithDeadline<C>>, Box<Fn() + Send>)
-    where C: InnerContext
-{
+pub fn with_timeout<'a>(parent: Context<'a>, timeout: Duration) -> (Context<'a>, Box<Fn() + Send>) {
     let timer = Timer::default();
     let (parent, cancel) = with_cancel(parent);
-    let ctx = WithDeadline{
+    let ctx = WithDeadline {
         parent: parent,
         when: Instant::now() + timeout,
         deadline: timer.sleep(timeout),

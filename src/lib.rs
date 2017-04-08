@@ -10,8 +10,6 @@
 
 extern crate futures;
 extern crate tokio_timer;
-#[macro_use]
-extern crate lazy_static;
 
 use std::any::Any;
 use std::error::Error;
@@ -27,11 +25,11 @@ pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
-pub struct Context<C: InnerContext>(Arc<Mutex<C>>);
+pub struct Context<'a>(Arc<Mutex<Box<InnerContext<'a, Item = (), Error = ContextError> + 'a>>>);
 
-impl<C> Context<C> where C: InnerContext {
-    pub fn new(ctx: C) -> Self {
-        Context(Arc::new(Mutex::new(ctx)))
+impl<'a> Context<'a> {
+    pub fn new<C: 'a + InnerContext<'a>>(ctx: C) -> Self {
+        Context(Arc::new(Mutex::new(Box::new(ctx))))
     }
 
     pub fn deadline(&self) -> Option<Instant> {
@@ -41,17 +39,25 @@ impl<C> Context<C> where C: InnerContext {
     pub fn value<T>(&self) -> Option<T>
         where T: Any + Clone
     {
-        self.lock().unwrap().value()
+        let ctx = self.lock().unwrap();
+        ctx.value()
+            .and_then(|val_any| val_any.downcast_ref::<T>())
+            .map(|v| (*v).clone())
+            .or_else(|| ctx.parent().and_then(|parent| parent.value()))
+        // {
+        //               Some(v) => Some((*v).clone()),
+        //               None => None,
+        //           })
     }
 
-    pub fn lock(&self) -> LockResult<MutexGuard<C>> {
+    pub fn lock
+        (&self)
+         -> LockResult<MutexGuard<Box<InnerContext<'a, Item = (), Error = ContextError> + 'a>>> {
         self.0.lock()
     }
 }
 
-impl<C> Future for Context<C>
-    where C: InnerContext
-{
+impl<'a> Future for Context<'a> {
     type Item = ();
     type Error = ContextError;
 
@@ -62,16 +68,15 @@ impl<C> Future for Context<C>
 }
 
 
-impl<C> Clone for Context<C>
-    where C: InnerContext
-{
+impl<'a> Clone for Context<'a> {
     fn clone(&self) -> Self {
         Context(self.0.clone())
     }
 }
 
 /// A Context carries a deadline, a cancelation Future, and other values across API boundaries.
-pub trait InnerContext: Future<Item = (), Error = ContextError> { // where Self: Sync {
+pub trait InnerContext<'a>: Future<Item = (), Error = ContextError> + Send {
+    // where Self: Sync {
     /// Returns the time when work done on behalf of this context should be
     /// canceled. Successive calls to deadline return the same result.
     fn deadline(&self) -> Option<Instant> {
@@ -83,9 +88,11 @@ pub trait InnerContext: Future<Item = (), Error = ContextError> { // where Self:
     /// Context values should only be used for request-scoped data that transists
     /// processes and API boundaries and not for passing optional parameters to
     /// functions.
-    fn value<T>(&self) -> Option<T>
-        where T: Any + Clone
-    {
+    fn value(&self) -> Option<&Any> {
+        None
+    }
+
+    fn parent(&self) -> Option<Context<'a>> {
         None
     }
 }
@@ -114,13 +121,13 @@ impl Error for ContextError {
 }
 
 mod background {
-    use {Context, InnerContext, ContextError};
+    use {InnerContext, ContextError};
     use futures::{Future, Poll, Async};
 
     #[derive(Clone)]
     pub struct Background {}
 
-    impl InnerContext for Background {}
+    impl<'a> InnerContext<'a> for Background {}
 
     impl Future for Background {
         type Item = ();
@@ -130,15 +137,10 @@ mod background {
             Ok(Async::NotReady)
         }
     }
-
-
-    lazy_static! {
-        pub static ref BACKGROUND: Context<Background> = Context::new(Background {});
-    }
 }
 
 /// Returns an empty Context. It is never canceled has neither a value nor a deadline. It is
 /// typically used as a top-level Context.
-pub fn background() -> Context<background::Background> {
-    background::BACKGROUND.clone()
+pub fn background<'a>() -> Context<'a> {
+    Context::new(background::Background {})
 }

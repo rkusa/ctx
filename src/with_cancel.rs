@@ -6,33 +6,29 @@ use futures::{Future, Poll, Async};
 use futures::task::{self, Task};
 
 #[derive(Clone)]
-pub struct WithCancel<C>
-    where C: InnerContext
-{
-    parent: Context<C>,
+pub struct WithCancel<'a> {
+    parent: Context<'a>,
     canceled: Arc<Mutex<bool>>,
     handle: Arc<Mutex<Option<Task>>>,
 }
 
-impl<C> InnerContext for WithCancel<C>
-    where C: InnerContext
-{
+impl<'a> InnerContext<'a> for WithCancel<'a> {
     fn deadline(&self) -> Option<time::Instant> {
         None
     }
 
-    fn value<T>(&self) -> Option<T>
-        where T: Any + Clone
-    {
+    fn value(&self) -> Option<&Any> {
+        None
+    }
+
+    fn parent(&self) -> Option<Context<'a>> {
         let clone = self.parent.clone();
         let parent = clone.lock().unwrap();
-        parent.value()
+        parent.parent()
     }
 }
 
-impl<C> Future for WithCancel<C>
-    where C: InnerContext
-{
+impl<'a> Future for WithCancel<'a> {
     type Item = ();
     type Error = ContextError;
 
@@ -82,9 +78,7 @@ impl<C> Future for WithCancel<C>
 ///     assert_eq!(ctx.wait().unwrap_err(), ContextError::Canceled);
 /// }
 /// ```
-pub fn with_cancel<C>(parent: Context<C>) -> (Context<WithCancel<C>>, Box<Fn() + Send>)
-    where C: InnerContext
-{
+pub fn with_cancel<'a>(parent: Context<'a>) -> (Context, Box<Fn() + Send>) {
     let canceled = Arc::new(Mutex::new(false));
     let handle = Arc::new(Mutex::new(None));
     let canceled_clone = canceled.clone();

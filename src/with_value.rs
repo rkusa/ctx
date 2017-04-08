@@ -3,40 +3,32 @@ use std::time::Instant;
 use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 
-pub struct WithValue<V, C>
-    where C: InnerContext,
-          V: Any
+pub struct WithValue<'a, V>
+    where V: Any + Send
 {
-    parent: Context<C>,
+    parent: Context<'a>,
     val: V,
 }
 
-impl<V, C> InnerContext for WithValue<V, C>
-    where C: InnerContext,
-          V: Any
+impl<'a, V> InnerContext<'a> for WithValue<'a, V>
+    where V: Any + Send
 {
     fn deadline(&self) -> Option<Instant> {
         None
     }
 
-    fn value<T>(&self) -> Option<T>
-        where T: Any + Clone
-    {
+    fn value(&self) -> Option<&Any> {
         let val_any = &self.val as &Any;
-        match val_any.downcast_ref::<T>() {
-            Some(v) => Some((*v).clone()),
-            None => {
-                let clone = self.parent.clone();
-                let parent = clone.lock().unwrap();
-                parent.value()
-            }
-        }
+        Some(val_any)
+    }
+
+    fn parent(&self) -> Option<Context<'a>> {
+        Some(self.parent.clone())
     }
 }
 
-impl<V, C> Future for WithValue<V, C>
-    where C: InnerContext,
-          V: Any
+impl<'a, V> Future for WithValue<'a, V>
+    where V: Any + Send
 {
     type Item = ();
     type Error = ContextError;
@@ -67,21 +59,21 @@ impl<V, C> Future for WithValue<V, C>
 /// assert_eq!(b.value(), Some(42));
 /// assert_eq!(b.value(), Some(1.0));
 /// ```
-pub fn with_value<V, C>(parent: Context<C>, val: V) -> Context<WithValue<V, C>>
-    where C: InnerContext,
-          V: Any
+pub fn with_value<'a, V>(parent: Context, val: V) -> Context
+    where V: Any + Send
 {
     Context::new(WithValue {
-        parent: parent,
-        val: val,
-    })
+                     parent: parent,
+                     val: val,
+                 })
 }
-
 
 #[cfg(test)]
 mod test {
+    use std::thread;
+    use futures::future::{self, Future};
     use with_value::with_value;
-    use {background};
+    use background;
 
     #[test]
     fn same_type_2test() {
@@ -116,5 +108,30 @@ mod test {
 
         assert_eq!(ctx.value(), Some(42));
         assert_eq!(clone.value(), Some(42));
+    }
+
+    #[test]
+    fn thread_test() {
+        let ctx = with_value(background(), 42);
+
+        thread::spawn(move || assert_eq!(ctx.value(), Some(42))).join().unwrap();
+    }
+
+    #[test]
+    fn future_test() {
+        let ctx = with_value(background(), 42);
+
+        future::ok::<(), ()>(()).and_then(move |_| {
+            assert_eq!(ctx.value(), Some(42));
+            future::ok(())
+        }
+            ).boxed().wait().unwrap();
+    }
+
+    #[test]
+    fn future_boxed_test() {
+        let ctx = with_value(background(), 42);
+
+        future::ok::<(), ()>(()).map(move |_| assert_eq!(ctx.value(), Some(42))).boxed().wait().unwrap();
     }
 }

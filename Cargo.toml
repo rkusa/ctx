@@ -13,4 +13,3 @@ Context defines a type, which carries deadlines, cancelation, and other request-
 [dependencies]
 futures = "0.1"
 tokio-timer = "0.1"
-lazy_static = "0.2"
