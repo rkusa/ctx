@@ -25,10 +25,10 @@ pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
-pub struct Context<'a>(Arc<Mutex<Box<InnerContext<'a, Item = (), Error = ContextError> + 'a>>>);
+pub struct Context(Arc<Mutex<Box<InnerContext<Item = (), Error = ContextError> + 'static>>>);
 
-impl<'a> Context<'a> {
-    pub fn new<C: 'a + InnerContext<'a>>(ctx: C) -> Self {
+impl Context {
+    pub fn new<C: 'static + InnerContext>(ctx: C) -> Self {
         Context(Arc::new(Mutex::new(Box::new(ctx))))
     }
 
@@ -52,12 +52,12 @@ impl<'a> Context<'a> {
 
     pub fn lock
         (&self)
-         -> LockResult<MutexGuard<Box<InnerContext<'a, Item = (), Error = ContextError> + 'a>>> {
+         -> LockResult<MutexGuard<Box<InnerContext<Item = (), Error = ContextError> + 'static>>> {
         self.0.lock()
     }
 }
 
-impl<'a> Future for Context<'a> {
+impl Future for Context {
     type Item = ();
     type Error = ContextError;
 
@@ -68,14 +68,14 @@ impl<'a> Future for Context<'a> {
 }
 
 
-impl<'a> Clone for Context<'a> {
+impl Clone for Context {
     fn clone(&self) -> Self {
         Context(self.0.clone())
     }
 }
 
 /// A Context carries a deadline, a cancelation Future, and other values across API boundaries.
-pub trait InnerContext<'a>: Future<Item = (), Error = ContextError> + Send {
+pub trait InnerContext: Future<Item = (), Error = ContextError> + Send {
     // where Self: Sync {
     /// Returns the time when work done on behalf of this context should be
     /// canceled. Successive calls to deadline return the same result.
@@ -92,7 +92,7 @@ pub trait InnerContext<'a>: Future<Item = (), Error = ContextError> + Send {
         None
     }
 
-    fn parent(&self) -> Option<Context<'a>> {
+    fn parent(&self) -> Option<Context> {
         None
     }
 }
@@ -127,7 +127,7 @@ mod background {
     #[derive(Clone)]
     pub struct Background {}
 
-    impl<'a> InnerContext<'a> for Background {}
+    impl InnerContext for Background {}
 
     impl Future for Background {
         type Item = ();
@@ -141,6 +141,6 @@ mod background {
 
 /// Returns an empty Context. It is never canceled has neither a value nor a deadline. It is
 /// typically used as a top-level Context.
-pub fn background<'a>() -> Context<'a> {
+pub fn background() -> Context {
     Context::new(background::Background {})
 }

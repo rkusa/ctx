@@ -4,13 +4,13 @@ use {Context, InnerContext, ContextError, with_cancel};
 use futures::{Future, Poll, Async};
 use tokio_timer::{Timer, Sleep};
 
-pub struct WithDeadline<'a> {
-    parent: Context<'a>,
+pub struct WithDeadline {
+    parent: Context,
     when: Instant,
     deadline: Sleep,
 }
 
-impl<'a> InnerContext<'a> for WithDeadline<'a> {
+impl InnerContext for WithDeadline {
     fn deadline(&self) -> Option<Instant> {
         Some(self.when)
     }
@@ -19,14 +19,14 @@ impl<'a> InnerContext<'a> for WithDeadline<'a> {
         None
     }
 
-    fn parent(&self) -> Option<Context<'a>> {
+    fn parent(&self) -> Option<Context> {
         let clone = self.parent.clone();
         let parent = clone.lock().unwrap();
         parent.parent()
     }
 }
 
-impl<'a> Future for WithDeadline<'a> {
+impl Future for WithDeadline {
     type Item = ();
     type Error = ContextError;
 
@@ -40,9 +40,9 @@ impl<'a> Future for WithDeadline<'a> {
 }
 
 /// Returns `with_timeout(parent, deadline - Instant::now())`.
-pub fn with_deadline<'a>(parent: Context<'a>,
+pub fn with_deadline(parent: Context,
                          deadline: Instant)
-                         -> (Context<'a>, Box<Fn() + Send>) {
+                         -> (Context, Box<Fn() + Send>) {
     with_timeout(parent, deadline - Instant::now())
 }
 
@@ -68,7 +68,7 @@ pub fn with_deadline<'a>(parent: Context<'a>,
 ///     assert_eq!(ctx.wait().unwrap_err(), ContextError::DeadlineExceeded);
 /// }
 /// ```
-pub fn with_timeout<'a>(parent: Context<'a>, timeout: Duration) -> (Context<'a>, Box<Fn() + Send>) {
+pub fn with_timeout(parent: Context, timeout: Duration) -> (Context, Box<Fn() + Send>) {
     let timer = Timer::default();
     let (parent, cancel) = with_cancel(parent);
     let ctx = WithDeadline {

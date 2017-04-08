@@ -3,14 +3,14 @@ use std::time::Instant;
 use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 
-pub struct WithValue<'a, V>
+pub struct WithValue<V>
     where V: Any + Send
 {
-    parent: Context<'a>,
+    parent: Context,
     val: V,
 }
 
-impl<'a, V> InnerContext<'a> for WithValue<'a, V>
+impl<V> InnerContext for WithValue<V>
     where V: Any + Send
 {
     fn deadline(&self) -> Option<Instant> {
@@ -22,12 +22,12 @@ impl<'a, V> InnerContext<'a> for WithValue<'a, V>
         Some(val_any)
     }
 
-    fn parent(&self) -> Option<Context<'a>> {
+    fn parent(&self) -> Option<Context> {
         Some(self.parent.clone())
     }
 }
 
-impl<'a, V> Future for WithValue<'a, V>
+impl<V> Future for WithValue<V>
     where V: Any + Send
 {
     type Item = ();
@@ -59,7 +59,7 @@ impl<'a, V> Future for WithValue<'a, V>
 /// assert_eq!(b.value(), Some(42));
 /// assert_eq!(b.value(), Some(1.0));
 /// ```
-pub fn with_value<'a, V>(parent: Context, val: V) -> Context
+pub fn with_value<V>(parent: Context, val: V) -> Context
     where V: Any + Send
 {
     Context::new(WithValue {
