@@ -24,6 +24,26 @@ pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
+/// A Context carries a deadline, a cancelation Future, and other values across API boundaries.
+pub trait Context: Future<Item = (), Error = ContextError> + Clone { // where Self: Sync {
+    /// Returns the time when work done on behalf of this context should be
+    /// canceled. Successive calls to deadline return the same result.
+    fn deadline(&self) -> Option<Instant> {
+        None
+    }
+
+    /// Returns the value associated with this context for the expected type.
+    ///
+    /// Context values should only be used for request-scoped data that transists
+    /// processes and API boundaries and not for passing optional parameters to
+    /// functions.
+    fn value<T>(&self) -> Option<T>
+        where T: Any + Clone
+    {
+        None
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum ContextError {
     Canceled,
@@ -47,30 +67,11 @@ impl Error for ContextError {
     }
 }
 
-/// A Context carries a deadline, a cancelation Future, and other values across API boundaries.
-pub trait Context: Future<Item = (), Error = ContextError> where Self: Sync {
-    /// Returns the time when work done on behalf of this context should be
-    /// canceled. Successive calls to deadline return the same result.
-    fn deadline(&self) -> Option<Instant> {
-        None
-    }
-
-    /// Returns the value associated with this context for the expected type.
-    ///
-    /// Context values should only be used for request-scoped data that transists
-    /// processes and API boundaries and not for passing optional parameters to
-    /// functions.
-    fn value<T>(&self) -> Option<&T>
-        where T: Any
-    {
-        None
-    }
-}
-
 mod background {
     use {Context, ContextError};
     use futures::{Future, Poll, Async};
 
+    #[derive(Clone)]
     pub struct Background {}
 
     impl Context for Background {}

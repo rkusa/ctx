@@ -19,8 +19,8 @@ impl<C> Context for WithDeadline<C>
         Some(self.when)
     }
 
-    fn value<T>(&self) -> Option<&T>
-        where T: Any
+    fn value<T>(&self) -> Option<T>
+        where T: Any + Clone
     {
         self.parent.value()
     }
@@ -37,6 +37,19 @@ impl<C> Future for WithDeadline<C>
             Ok(Async::Ready(_)) => Err(ContextError::DeadlineExceeded),
             Ok(Async::NotReady) => self.parent.poll(),
             Err(_) => Err(ContextError::DeadlineTooLong),
+        }
+    }
+}
+
+impl<C> Clone for WithDeadline<C>
+    where C: Context
+{
+    fn clone(&self) -> Self {
+        let timer = Timer::default();
+        WithDeadline{
+            parent: self.parent.clone(),
+            when: self.when.clone(),
+            deadline: timer.sleep(Instant::now() - self.when),
         }
     }
 }
@@ -138,5 +151,19 @@ mod test {
             Err((err, _)) => assert_eq!(err, ContextError::DeadlineExceeded),
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn clone_test() {
+        let duration = Duration::new(0, 50);
+        let when = Instant::now() + duration;
+        let (ctx, _) = with_timeout(background(), duration);
+        let clone = ctx.clone();
+
+        assert!(clone.deadline().unwrap() - when < Duration::from_millis(10));
+
+        thread::sleep(Duration::from_millis(100));
+        assert_eq!(ctx.wait().unwrap_err(), ContextError::DeadlineExceeded);
+        assert_eq!(clone.wait().unwrap_err(), ContextError::DeadlineExceeded);
     }
 }

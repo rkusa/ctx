@@ -5,10 +5,11 @@ use {Context, ContextError};
 use futures::{Future, Poll, Async};
 use futures::task::{self, Task};
 
+#[derive(Clone)]
 pub struct WithCancel<C>
     where C: Context
 {
-    parent: Box<C>,
+    parent: Arc<Mutex<C>>,
     canceled: Arc<Mutex<bool>>,
     handle: Arc<Mutex<Option<Task>>>,
 }
@@ -20,10 +21,12 @@ impl<C> Context for WithCancel<C>
         None
     }
 
-    fn value<T>(&self) -> Option<&T>
-        where T: Any
+    fn value<T>(&self) -> Option<T>
+        where T: Any + Clone
     {
-        self.parent.as_ref().value()
+        let clone = self.parent.clone();
+        let parent = clone.lock().unwrap();
+        parent.value()
     }
 }
 
@@ -38,6 +41,8 @@ impl<C> Future for WithCancel<C>
             Err(ContextError::Canceled)
         } else {
             self.parent
+                .lock()
+                .unwrap()
                 .poll()
                 .map(|r| {
                     if r == Async::NotReady {
@@ -86,7 +91,7 @@ pub fn with_cancel<C>(parent: C) -> (WithCancel<C>, Box<Fn() + Send>)
     let handle_clone = handle.clone();
 
     let ctx = WithCancel {
-        parent: Box::new(parent),
+        parent: Arc::new(Mutex::new(parent)),
         canceled: canceled,
         handle: handle,
     };
@@ -149,5 +154,15 @@ mod test {
             Err((err, _)) => assert_eq!(err, ContextError::Canceled),
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn clone_test() {
+        let (ctx, cancel) = with_cancel(background());
+        let clone = ctx.clone();
+        cancel();
+
+        assert_eq!(ctx.wait().unwrap_err(), ContextError::Canceled);
+        assert_eq!(clone.wait().unwrap_err(), ContextError::Canceled);
     }
 }
