@@ -10,12 +10,15 @@
 
 extern crate futures;
 extern crate tokio_timer;
+#[macro_use]
+extern crate lazy_static;
 
+use std::any::Any;
 use std::error::Error;
 use std::fmt;
-use std::any::Any;
+use std::sync::{Arc, Mutex, LockResult, MutexGuard};
 use std::time::Instant;
-use futures::Future;
+use futures::{Future, Poll};
 
 mod with_value;
 mod with_cancel;
@@ -24,8 +27,51 @@ pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
+pub struct Context<C: InnerContext>(Arc<Mutex<C>>);
+
+impl<C> Context<C> where C: InnerContext {
+    pub fn new(ctx: C) -> Self {
+        Context(Arc::new(Mutex::new(ctx)))
+    }
+
+    pub fn deadline(&self) -> Option<Instant> {
+        self.lock().unwrap().deadline()
+    }
+
+    pub fn value<T>(&self) -> Option<T>
+        where T: Any + Clone
+    {
+        self.lock().unwrap().value()
+    }
+
+    pub fn lock(&self) -> LockResult<MutexGuard<C>> {
+        self.0.lock()
+    }
+}
+
+impl<C> Future for Context<C>
+    where C: InnerContext
+{
+    type Item = ();
+    type Error = ContextError;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let mut inner = self.lock().unwrap();
+        inner.poll()
+    }
+}
+
+
+impl<C> Clone for Context<C>
+    where C: InnerContext
+{
+    fn clone(&self) -> Self {
+        Context(self.0.clone())
+    }
+}
+
 /// A Context carries a deadline, a cancelation Future, and other values across API boundaries.
-pub trait Context: Future<Item = (), Error = ContextError> + Clone { // where Self: Sync {
+pub trait InnerContext: Future<Item = (), Error = ContextError> { // where Self: Sync {
     /// Returns the time when work done on behalf of this context should be
     /// canceled. Successive calls to deadline return the same result.
     fn deadline(&self) -> Option<Instant> {
@@ -68,13 +114,13 @@ impl Error for ContextError {
 }
 
 mod background {
-    use {Context, ContextError};
+    use {Context, InnerContext, ContextError};
     use futures::{Future, Poll, Async};
 
     #[derive(Clone)]
     pub struct Background {}
 
-    impl Context for Background {}
+    impl InnerContext for Background {}
 
     impl Future for Background {
         type Item = ();
@@ -85,11 +131,14 @@ mod background {
         }
     }
 
-    pub const BACKGROUND: Background = Background {};
+
+    lazy_static! {
+        pub static ref BACKGROUND: Context<Background> = Context::new(Background {});
+    }
 }
 
 /// Returns an empty Context. It is never canceled has neither a value nor a deadline. It is
 /// typically used as a top-level Context.
-pub fn background() -> background::Background {
-    background::BACKGROUND
+pub fn background() -> Context<background::Background> {
+    background::BACKGROUND.clone()
 }

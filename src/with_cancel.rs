@@ -1,21 +1,21 @@
 use std::sync::{Arc, Mutex};
 use std::time;
 use std::any::Any;
-use {Context, ContextError};
+use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 use futures::task::{self, Task};
 
 #[derive(Clone)]
 pub struct WithCancel<C>
-    where C: Context
+    where C: InnerContext
 {
-    parent: Arc<Mutex<C>>,
+    parent: Context<C>,
     canceled: Arc<Mutex<bool>>,
     handle: Arc<Mutex<Option<Task>>>,
 }
 
-impl<C> Context for WithCancel<C>
-    where C: Context
+impl<C> InnerContext for WithCancel<C>
+    where C: InnerContext
 {
     fn deadline(&self) -> Option<time::Instant> {
         None
@@ -31,7 +31,7 @@ impl<C> Context for WithCancel<C>
 }
 
 impl<C> Future for WithCancel<C>
-    where C: Context
+    where C: InnerContext
 {
     type Item = ();
     type Error = ContextError;
@@ -82,8 +82,8 @@ impl<C> Future for WithCancel<C>
 ///     assert_eq!(ctx.wait().unwrap_err(), ContextError::Canceled);
 /// }
 /// ```
-pub fn with_cancel<C>(parent: C) -> (WithCancel<C>, Box<Fn() + Send>)
-    where C: Context
+pub fn with_cancel<C>(parent: Context<C>) -> (Context<WithCancel<C>>, Box<Fn() + Send>)
+    where C: InnerContext
 {
     let canceled = Arc::new(Mutex::new(false));
     let handle = Arc::new(Mutex::new(None));
@@ -91,7 +91,7 @@ pub fn with_cancel<C>(parent: C) -> (WithCancel<C>, Box<Fn() + Send>)
     let handle_clone = handle.clone();
 
     let ctx = WithCancel {
-        parent: Arc::new(Mutex::new(parent)),
+        parent: parent,
         canceled: canceled,
         handle: handle,
     };
@@ -103,7 +103,7 @@ pub fn with_cancel<C>(parent: C) -> (WithCancel<C>, Box<Fn() + Send>)
                                   task.unpark();
                               }
                           });
-    (ctx, cancel)
+    (Context::new(ctx), cancel)
 }
 
 #[cfg(test)]

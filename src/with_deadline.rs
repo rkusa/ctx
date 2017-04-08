@@ -1,19 +1,19 @@
 use std::time::{Duration, Instant};
 use std::any::Any;
-use {Context, ContextError, with_cancel, WithCancel};
+use {Context, InnerContext, ContextError, with_cancel, WithCancel};
 use futures::{Future, Poll, Async};
 use tokio_timer::{Timer, Sleep};
 
 pub struct WithDeadline<C>
-    where C: Context
+    where C: InnerContext
 {
-    parent: WithCancel<C>,
+    parent: Context<WithCancel<C>>,
     when: Instant,
     deadline: Sleep,
 }
 
-impl<C> Context for WithDeadline<C>
-    where C: Context
+impl<C> InnerContext for WithDeadline<C>
+    where C: InnerContext
 {
     fn deadline(&self) -> Option<Instant> {
         Some(self.when)
@@ -27,7 +27,7 @@ impl<C> Context for WithDeadline<C>
 }
 
 impl<C> Future for WithDeadline<C>
-    where C: Context
+    where C: InnerContext
 {
     type Item = ();
     type Error = ContextError;
@@ -41,22 +41,9 @@ impl<C> Future for WithDeadline<C>
     }
 }
 
-impl<C> Clone for WithDeadline<C>
-    where C: Context
-{
-    fn clone(&self) -> Self {
-        let timer = Timer::default();
-        WithDeadline{
-            parent: self.parent.clone(),
-            when: self.when.clone(),
-            deadline: timer.sleep(Instant::now() - self.when),
-        }
-    }
-}
-
 /// Returns `with_timeout(parent, deadline - Instant::now())`.
-pub fn with_deadline<C>(parent: C, deadline: Instant) -> (WithDeadline<C>, Box<Fn() + Send>)
-    where C: Context
+pub fn with_deadline<C>(parent: Context<C>, deadline: Instant) -> (Context<WithDeadline<C>>, Box<Fn() + Send>)
+    where C: InnerContext
 {
     with_timeout(parent, deadline - Instant::now())
 }
@@ -83,8 +70,8 @@ pub fn with_deadline<C>(parent: C, deadline: Instant) -> (WithDeadline<C>, Box<F
 ///     assert_eq!(ctx.wait().unwrap_err(), ContextError::DeadlineExceeded);
 /// }
 /// ```
-pub fn with_timeout<C>(parent: C, timeout: Duration) -> (WithDeadline<C>, Box<Fn() + Send>)
-    where C: Context
+pub fn with_timeout<C>(parent: Context<C>, timeout: Duration) -> (Context<WithDeadline<C>>, Box<Fn() + Send>)
+    where C: InnerContext
 {
     let timer = Timer::default();
     let (parent, cancel) = with_cancel(parent);
@@ -93,7 +80,7 @@ pub fn with_timeout<C>(parent: C, timeout: Duration) -> (WithDeadline<C>, Box<Fn
         when: Instant::now() + timeout,
         deadline: timer.sleep(timeout),
     };
-    (ctx, cancel)
+    (Context::new(ctx), cancel)
 }
 
 #[cfg(test)]
@@ -102,7 +89,7 @@ mod test {
     use std::thread;
     use tokio_timer::Timer;
     use with_deadline::with_timeout;
-    use {Context, background, ContextError};
+    use {background, ContextError};
     use futures::Future;
 
     #[test]

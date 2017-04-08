@@ -1,21 +1,19 @@
-use std::sync::{Arc, Mutex};
 use std::any::Any;
 use std::time::Instant;
-use {Context, ContextError};
+use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 
-#[derive(Clone)]
 pub struct WithValue<V, C>
-    where C: Context,
-          V: Any + Sync
+    where C: InnerContext,
+          V: Any
 {
-    parent: Arc<Mutex<C>>,
+    parent: Context<C>,
     val: V,
 }
 
-impl<V, C> Context for WithValue<V, C>
-    where C: Context,
-          V: Any + Clone + Sync
+impl<V, C> InnerContext for WithValue<V, C>
+    where C: InnerContext,
+          V: Any
 {
     fn deadline(&self) -> Option<Instant> {
         None
@@ -37,8 +35,8 @@ impl<V, C> Context for WithValue<V, C>
 }
 
 impl<V, C> Future for WithValue<V, C>
-    where C: Context,
-          V: Any + Sync
+    where C: InnerContext,
+          V: Any
 {
     type Item = ();
     type Error = ContextError;
@@ -69,21 +67,21 @@ impl<V, C> Future for WithValue<V, C>
 /// assert_eq!(b.value(), Some(42));
 /// assert_eq!(b.value(), Some(1.0));
 /// ```
-pub fn with_value<V, C>(parent: C, val: V) -> WithValue<V, C>
-    where C: Context,
-          V: Any + Sync
+pub fn with_value<V, C>(parent: Context<C>, val: V) -> Context<WithValue<V, C>>
+    where C: InnerContext,
+          V: Any
 {
-    WithValue {
-        parent: Arc::new(Mutex::new(parent)),
+    Context::new(WithValue {
+        parent: parent,
         val: val,
-    }
+    })
 }
 
 
 #[cfg(test)]
 mod test {
     use with_value::with_value;
-    use {Context, background};
+    use {background};
 
     #[test]
     fn same_type_2test() {
