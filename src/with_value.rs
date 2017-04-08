@@ -71,7 +71,6 @@ pub fn with_value<V>(parent: Context, val: V) -> Context
 #[cfg(test)]
 mod test {
     use std::thread;
-    use futures::future::{self, Future};
     use with_value::with_value;
     use background;
 
@@ -115,23 +114,5 @@ mod test {
         let ctx = with_value(background(), 42);
 
         thread::spawn(move || assert_eq!(ctx.value(), Some(42))).join().unwrap();
-    }
-
-    #[test]
-    fn future_test() {
-        let ctx = with_value(background(), 42);
-
-        future::ok::<(), ()>(()).and_then(move |_| {
-            assert_eq!(ctx.value(), Some(42));
-            future::ok(())
-        }
-            ).boxed().wait().unwrap();
-    }
-
-    #[test]
-    fn future_boxed_test() {
-        let ctx = with_value(background(), 42);
-
-        future::ok::<(), ()>(()).map(move |_| assert_eq!(ctx.value(), Some(42))).boxed().wait().unwrap();
     }
 }

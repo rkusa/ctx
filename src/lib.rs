@@ -25,7 +25,7 @@ pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
-pub struct Context(Arc<Mutex<Box<InnerContext<Item = (), Error = ContextError> + 'static>>>);
+pub struct Context(Arc<Mutex<Box<InnerContext<Item = (), Error = ContextError>>>>);
 
 impl Context {
     pub fn new<C: 'static + InnerContext>(ctx: C) -> Self {
@@ -52,7 +52,7 @@ impl Context {
 
     pub fn lock
         (&self)
-         -> LockResult<MutexGuard<Box<InnerContext<Item = (), Error = ContextError> + 'static>>> {
+         -> LockResult<MutexGuard<Box<InnerContext<Item = (), Error = ContextError>>>> {
         self.0.lock()
     }
 }
