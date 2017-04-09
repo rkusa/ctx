@@ -22,9 +22,7 @@ impl InnerContext for WithCancel {
     }
 
     fn parent(&self) -> Option<Context> {
-        let clone = self.parent.clone();
-        let parent = clone.lock().unwrap();
-        parent.parent()
+        self.parent.0.borrow().parent()
     }
 }
 
@@ -36,9 +34,7 @@ impl Future for WithCancel {
         if *self.canceled.lock().unwrap() {
             Err(ContextError::Canceled)
         } else {
-            self.parent
-                .lock()
-                .unwrap()
+            self.parent.0.borrow_mut()
                 .poll()
                 .map(|r| {
                     if r == Async::NotReady {

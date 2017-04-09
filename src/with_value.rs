@@ -4,14 +4,14 @@ use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 
 pub struct WithValue<V>
-    where V: Any + Send
+    where V: Any
 {
     parent: Context,
     val: V,
 }
 
 impl<V> InnerContext for WithValue<V>
-    where V: Any + Send
+    where V: Any
 {
     fn deadline(&self) -> Option<Instant> {
         None
@@ -28,7 +28,7 @@ impl<V> InnerContext for WithValue<V>
 }
 
 impl<V> Future for WithValue<V>
-    where V: Any + Send
+    where V: Any
 {
     type Item = ();
     type Error = ContextError;
@@ -60,7 +60,7 @@ impl<V> Future for WithValue<V>
 /// assert_eq!(b.value(), Some(1.0));
 /// ```
 pub fn with_value<V>(parent: Context, val: V) -> Context
-    where V: Any + Send
+    where V: Any
 {
     Context::new(WithValue {
                      parent: parent,
@@ -70,7 +70,6 @@ pub fn with_value<V>(parent: Context, val: V) -> Context
 
 #[cfg(test)]
 mod test {
-    use std::thread;
     use with_value::with_value;
     use background;
 
@@ -107,12 +106,5 @@ mod test {
 
         assert_eq!(ctx.value(), Some(42));
         assert_eq!(clone.value(), Some(42));
-    }
-
-    #[test]
-    fn thread_test() {
-        let ctx = with_value(background(), 42);
-
-        thread::spawn(move || assert_eq!(ctx.value(), Some(42))).join().unwrap();
     }
 }

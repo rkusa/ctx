@@ -12,9 +12,10 @@ extern crate futures;
 extern crate tokio_timer;
 
 use std::any::Any;
+use std::rc::Rc;
+use std::cell::RefCell;
 use std::error::Error;
 use std::fmt;
-use std::sync::{Arc, Mutex, LockResult, MutexGuard};
 use std::time::Instant;
 use futures::{Future, Poll};
 
@@ -25,35 +26,25 @@ pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
-pub struct Context(Arc<Mutex<Box<InnerContext<Item = (), Error = ContextError>>>>);
+pub struct Context(pub Rc<RefCell<Box<InnerContext<Item = (), Error = ContextError>>>>);
 
 impl Context {
     pub fn new<C: 'static + InnerContext>(ctx: C) -> Self {
-        Context(Arc::new(Mutex::new(Box::new(ctx))))
+        Context(Rc::new(RefCell::new(Box::new(ctx))))
     }
 
     pub fn deadline(&self) -> Option<Instant> {
-        self.lock().unwrap().deadline()
+        self.0.borrow().deadline()
     }
 
     pub fn value<T>(&self) -> Option<T>
         where T: Any + Clone
     {
-        let ctx = self.lock().unwrap();
+        let ctx = self.0.borrow();
         ctx.value()
             .and_then(|val_any| val_any.downcast_ref::<T>())
             .map(|v| (*v).clone())
             .or_else(|| ctx.parent().and_then(|parent| parent.value()))
-        // {
-        //               Some(v) => Some((*v).clone()),
-        //               None => None,
-        //           })
-    }
-
-    pub fn lock
-        (&self)
-         -> LockResult<MutexGuard<Box<InnerContext<Item = (), Error = ContextError>>>> {
-        self.0.lock()
     }
 }
 
@@ -62,7 +53,7 @@ impl Future for Context {
     type Error = ContextError;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let mut inner = self.lock().unwrap();
+        let mut inner = self.0.borrow_mut();
         inner.poll()
     }
 }
@@ -75,7 +66,7 @@ impl Clone for Context {
 }
 
 /// A Context carries a deadline, a cancelation Future, and other values across API boundaries.
-pub trait InnerContext: Future<Item = (), Error = ContextError> + Send {
+pub trait InnerContext: Future<Item = (), Error = ContextError> {
     // where Self: Sync {
     /// Returns the time when work done on behalf of this context should be
     /// canceled. Successive calls to deadline return the same result.

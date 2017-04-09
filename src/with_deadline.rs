@@ -20,9 +20,7 @@ impl InnerContext for WithDeadline {
     }
 
     fn parent(&self) -> Option<Context> {
-        let clone = self.parent.clone();
-        let parent = clone.lock().unwrap();
-        parent.parent()
+        self.parent.0.borrow().parent()
     }
 }
 
