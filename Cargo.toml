@@ -1,6 +1,6 @@
 [package]
 name = "ctx"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Markus Ast <m@rkusa.st>"]
 license = "MIT"
 repository = "https://github.com/rkusa/ctx"

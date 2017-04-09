@@ -1,7 +1,7 @@
 # ctx
 
 [![Build Status](https://travis-ci.org/rkusa/ctx.svg?branch=master)](https://travis-ci.org/rkusa/ctx)
-[![Crates.io](https://img.shields.io/crates/v/ctx.svg?maxAge=2592000)](https://crates.io/crates/ctx)
+[![Crates.io](https://img.shields.io/crates/v/ctx.svg)](https://crates.io/crates/ctx)
 
 [Documentation](https://docs.rs/ctx)
 
