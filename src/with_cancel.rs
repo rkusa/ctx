@@ -33,23 +33,21 @@ impl Future for WithCancel {
         if *self.canceled.lock().unwrap() {
             Err(ContextError::Canceled)
         } else {
-            self.parent.0
-                .poll()
-                .map(|r| {
-                    if r == Async::NotReady {
-                        // perform any necessary operations in order to get notified in case the
-                        // context gets canceled
-                        let mut handle = self.handle.lock().unwrap();
-                        let must_update = match *handle {
-                            Some(ref task) if task.will_notify_current() => false,
-                            _ => true,
-                        };
-                        if must_update {
-                            *handle = Some(task::current())
-                        }
+            self.parent.0.poll().map(|r| {
+                if r == Async::NotReady {
+                    // perform any necessary operations in order to get notified in case the
+                    // context gets canceled
+                    let mut handle = self.handle.lock().unwrap();
+                    let must_update = match *handle {
+                        Some(ref task) if task.will_notify_current() => false,
+                        _ => true,
+                    };
+                    if must_update {
+                        *handle = Some(task::current())
                     }
-                    r
-                })
+                }
+                r
+            })
         }
     }
 }
@@ -85,13 +83,13 @@ pub fn with_cancel(parent: Context) -> (Context, Box<Fn() + Send>) {
         handle: handle,
     };
     let cancel = Box::new(move || {
-                              let mut canceled = canceled_clone.lock().unwrap();
-                              *canceled = true;
+        let mut canceled = canceled_clone.lock().unwrap();
+        *canceled = true;
 
-                              if let Some(ref task) = *handle_clone.lock().unwrap() {
-                                  task.notify();
-                              }
-                          });
+        if let Some(ref task) = *handle_clone.lock().unwrap() {
+            task.notify();
+        }
+    });
     (Context::new(ctx), cancel)
 }
 
@@ -133,9 +131,9 @@ mod test {
             .select(ctx);
 
         thread::spawn(move || {
-                          thread::sleep(Duration::from_millis(100));
-                          cancel();
-                      });
+            thread::sleep(Duration::from_millis(100));
+            cancel();
+        });
 
         let result = first.wait();
         assert!(result.is_err());

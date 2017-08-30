@@ -38,9 +38,7 @@ impl Future for WithDeadline {
 }
 
 /// Returns `with_timeout(parent, deadline - Instant::now())`.
-pub fn with_deadline(parent: Context,
-                         deadline: Instant)
-                         -> (Context, Box<Fn() + Send>) {
+pub fn with_deadline(parent: Context, deadline: Instant) -> (Context, Box<Fn() + Send>) {
     with_timeout(parent, deadline - Instant::now())
 }
 

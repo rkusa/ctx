@@ -4,14 +4,16 @@ use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 
 pub struct WithValue<V>
-    where V: Any + Send
+where
+    V: Any + Send,
 {
     parent: Context,
     val: V,
 }
 
 impl<V> InnerContext for WithValue<V>
-    where V: Any + Send
+where
+    V: Any + Send,
 {
     fn deadline(&self) -> Option<Instant> {
         None
@@ -28,7 +30,8 @@ impl<V> InnerContext for WithValue<V>
 }
 
 impl<V> Future for WithValue<V>
-    where V: Any + Send
+where
+    V: Any + Send,
 {
     type Item = ();
     type Error = ContextError;
@@ -60,12 +63,13 @@ impl<V> Future for WithValue<V>
 /// assert_eq!(b.value(), Some(1.0));
 /// ```
 pub fn with_value<V>(parent: Context, val: V) -> Context
-    where V: Any + Send
+where
+    V: Any + Send,
 {
     Context::new(WithValue {
-                     parent: parent,
-                     val: val,
-                 })
+        parent: parent,
+        val: val,
+    })
 }
 
 #[cfg(test)]
