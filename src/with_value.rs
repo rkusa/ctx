@@ -4,14 +4,14 @@ use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 
 pub struct WithValue<V>
-    where V: Any
+    where V: Any + Send
 {
     parent: Context,
     val: V,
 }
 
 impl<V> InnerContext for WithValue<V>
-    where V: Any
+    where V: Any + Send
 {
     fn deadline(&self) -> Option<Instant> {
         None
@@ -22,13 +22,13 @@ impl<V> InnerContext for WithValue<V>
         Some(val_any)
     }
 
-    fn parent(&self) -> Option<Context> {
-        Some(self.parent.clone())
+    fn parent(&self) -> Option<&Context> {
+        Some(&self.parent)
     }
 }
 
 impl<V> Future for WithValue<V>
-    where V: Any
+    where V: Any + Send
 {
     type Item = ();
     type Error = ContextError;
@@ -60,7 +60,7 @@ impl<V> Future for WithValue<V>
 /// assert_eq!(b.value(), Some(1.0));
 /// ```
 pub fn with_value<V>(parent: Context, val: V) -> Context
-    where V: Any
+    where V: Any + Send
 {
     Context::new(WithValue {
                      parent: parent,
@@ -97,14 +97,5 @@ mod test {
         let a = with_value(background(), A(1));
         let b = with_value(a, B(1));
         assert_eq!(b.value(), Some(A(1)));
-    }
-
-    #[test]
-    fn clone_test() {
-        let ctx = with_value(background(), 42);
-        let clone = ctx.clone();
-
-        assert_eq!(ctx.value(), Some(42));
-        assert_eq!(clone.value(), Some(42));
     }
 }

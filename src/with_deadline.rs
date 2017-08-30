@@ -19,8 +19,8 @@ impl InnerContext for WithDeadline {
         None
     }
 
-    fn parent(&self) -> Option<Context> {
-        self.parent.0.borrow().parent()
+    fn parent(&self) -> Option<&Context> {
+        self.parent.0.parent()
     }
 }
 
@@ -132,19 +132,5 @@ mod test {
             Err((err, _)) => assert_eq!(err, ContextError::DeadlineExceeded),
             _ => assert!(false),
         }
-    }
-
-    #[test]
-    fn clone_test() {
-        let duration = Duration::new(0, 50);
-        let when = Instant::now() + duration;
-        let (ctx, _) = with_timeout(background(), duration);
-        let clone = ctx.clone();
-
-        assert!(clone.deadline().unwrap() - when < Duration::from_millis(10));
-
-        thread::sleep(Duration::from_millis(100));
-        assert_eq!(ctx.wait().unwrap_err(), ContextError::DeadlineExceeded);
-        assert_eq!(clone.wait().unwrap_err(), ContextError::DeadlineExceeded);
     }
 }

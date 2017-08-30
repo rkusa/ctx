@@ -5,10 +5,9 @@ use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 use futures::task::{self, Task};
 
-#[derive(Clone)]
 pub struct WithCancel {
     parent: Context,
-    canceled: Arc<Mutex<bool>>,
+    canceled: Arc<Mutex<bool>>, // TODO: Arc necessary?
     handle: Arc<Mutex<Option<Task>>>,
 }
 
@@ -21,8 +20,8 @@ impl InnerContext for WithCancel {
         None
     }
 
-    fn parent(&self) -> Option<Context> {
-        self.parent.0.borrow().parent()
+    fn parent(&self) -> Option<&Context> {
+        self.parent.0.parent()
     }
 }
 
@@ -34,7 +33,7 @@ impl Future for WithCancel {
         if *self.canceled.lock().unwrap() {
             Err(ContextError::Canceled)
         } else {
-            self.parent.0.borrow_mut()
+            self.parent.0
                 .poll()
                 .map(|r| {
                     if r == Async::NotReady {
@@ -42,11 +41,11 @@ impl Future for WithCancel {
                         // context gets canceled
                         let mut handle = self.handle.lock().unwrap();
                         let must_update = match *handle {
-                            Some(ref task) if task.is_current() => false,
+                            Some(ref task) if task.will_notify_current() => false,
                             _ => true,
                         };
                         if must_update {
-                            *handle = Some(task::park())
+                            *handle = Some(task::current())
                         }
                     }
                     r
@@ -90,7 +89,7 @@ pub fn with_cancel(parent: Context) -> (Context, Box<Fn() + Send>) {
                               *canceled = true;
 
                               if let Some(ref task) = *handle_clone.lock().unwrap() {
-                                  task.unpark();
+                                  task.notify();
                               }
                           });
     (Context::new(ctx), cancel)
@@ -144,15 +143,5 @@ mod test {
             Err((err, _)) => assert_eq!(err, ContextError::Canceled),
             _ => assert!(false),
         }
-    }
-
-    #[test]
-    fn clone_test() {
-        let (ctx, cancel) = with_cancel(background());
-        let clone = ctx.clone();
-        cancel();
-
-        assert_eq!(ctx.wait().unwrap_err(), ContextError::Canceled);
-        assert_eq!(clone.wait().unwrap_err(), ContextError::Canceled);
     }
 }

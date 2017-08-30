@@ -1,6 +1,6 @@
 //! Ctx defines the Context type, which carries deadlines, cancelation
-//! [futures](https://github.com/alexcrichton/futures-rs), and other request-scoped values across API
-//! boundaries and between processes.
+//! [futures](https://github.com/alexcrichton/futures-rs), and other request-scoped values across
+//! API boundaries and between processes.
 //!
 //! It is similar to Go's [context](https://blog.golang.org/context)
 //! [package](https://golang.org/pkg/context/). The main use case is to have incoming requests to a
@@ -12,8 +12,6 @@ extern crate futures;
 extern crate tokio_timer;
 
 use std::any::Any;
-use std::rc::Rc;
-use std::cell::RefCell;
 use std::error::Error;
 use std::fmt;
 use std::time::Instant;
@@ -26,25 +24,27 @@ pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
-pub struct Context(pub Rc<RefCell<Box<InnerContext<Item = (), Error = ContextError>>>>);
+// #[derive(Clone)]
+pub struct Context(pub Box<InnerContext<Item = (), Error = ContextError>>);
 
 impl Context {
     pub fn new<C: 'static + InnerContext>(ctx: C) -> Self {
-        Context(Rc::new(RefCell::new(Box::new(ctx))))
+        Context(Box::new(ctx))
     }
 
     pub fn deadline(&self) -> Option<Instant> {
-        self.0.borrow().deadline()
+        self.0.deadline()
     }
 
     pub fn value<T>(&self) -> Option<T>
-        where T: Any + Clone
+    where
+        T: Any + Clone,
     {
-        let ctx = self.0.borrow();
-        ctx.value()
+        self.0
+            .value()
             .and_then(|val_any| val_any.downcast_ref::<T>())
             .map(|v| (*v).clone())
-            .or_else(|| ctx.parent().and_then(|parent| parent.value()))
+            .or_else(|| self.0.parent().and_then(|parent| parent.value()))
     }
 }
 
@@ -53,21 +53,12 @@ impl Future for Context {
     type Error = ContextError;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let mut inner = self.0.borrow_mut();
-        inner.poll()
-    }
-}
-
-
-impl Clone for Context {
-    fn clone(&self) -> Self {
-        Context(self.0.clone())
+        self.0.poll()
     }
 }
 
 /// A Context carries a deadline, a cancelation Future, and other values across API boundaries.
 pub trait InnerContext: Future<Item = (), Error = ContextError> {
-    // where Self: Sync {
     /// Returns the time when work done on behalf of this context should be
     /// canceled. Successive calls to deadline return the same result.
     fn deadline(&self) -> Option<Instant> {
@@ -83,7 +74,7 @@ pub trait InnerContext: Future<Item = (), Error = ContextError> {
         None
     }
 
-    fn parent(&self) -> Option<Context> {
+    fn parent(&self) -> Option<&Context> {
         None
     }
 }
