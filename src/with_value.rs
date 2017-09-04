@@ -70,7 +70,18 @@ where
 #[cfg(test)]
 mod test {
     use with_value::with_value;
-    use background;
+    use with_cancel::with_cancel;
+    use {background, ContextError};
+    use futures::Future;
+
+    #[test]
+    fn poll_parent_test() {
+        let (parent, cancel) = with_cancel(background());
+        let ctx = with_value(parent, 42);
+        cancel();
+
+        assert_eq!(ctx.wait().unwrap_err(), ContextError::Canceled);
+    }
 
     #[test]
     fn same_type_2test() {

@@ -104,12 +104,12 @@ mod test {
         let (parent, _) = with_timeout(background(), Duration::from_millis(50));
         let (ctx, _) = with_timeout(parent, Duration::from_secs(10));
 
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(25));
         assert_eq!(ctx.wait().unwrap_err(), ContextError::DeadlineExceeded);
     }
 
     #[test]
-    fn deadline_as_parent_test() {
+    fn deadline_on_parent_test() {
         let (parent, _) = with_timeout(background(), Duration::from_millis(50));
         let ctx = with_value(parent, 42);
 

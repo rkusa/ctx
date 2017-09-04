@@ -89,7 +89,7 @@ mod test {
     use std::thread;
     use tokio_timer::Timer;
     use with_cancel::with_cancel;
-    use {background, ContextError, with_value};
+    use {background, ContextError};
     use futures::Future;
 
     #[test]
@@ -101,18 +101,9 @@ mod test {
     }
 
     #[test]
-    fn cancel_with_parent_test() {
+    fn cancel_parent_test() {
         let (parent, cancel) = with_cancel(background());
         let (ctx, _) = with_cancel(parent);
-        cancel();
-
-        assert_eq!(ctx.wait().unwrap_err(), ContextError::Canceled);
-    }
-
-    #[test]
-    fn cancel_as_parent_test() {
-        let (parent, cancel) = with_cancel(background());
-        let ctx = with_value(parent, 42);
         cancel();
 
         assert_eq!(ctx.wait().unwrap_err(), ContextError::Canceled);
