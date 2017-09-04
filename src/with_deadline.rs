@@ -1,5 +1,4 @@
 use std::time::{Duration, Instant};
-use std::any::Any;
 use {Context, InnerContext, ContextError, with_cancel};
 use futures::{Future, Poll, Async};
 use tokio_timer::{Timer, Sleep};
@@ -13,10 +12,6 @@ pub struct WithDeadline {
 impl InnerContext for WithDeadline {
     fn deadline(&self) -> Option<Instant> {
         Some(self.when)
-    }
-
-    fn value(&self) -> Option<&Any> {
-        None
     }
 
     fn parent(&self) -> Option<&Context> {

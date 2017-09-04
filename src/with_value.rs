@@ -1,5 +1,4 @@
 use std::any::Any;
-use std::time::Instant;
 use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 
@@ -15,10 +14,6 @@ impl<V> InnerContext for WithValue<V>
 where
     V: Any + Send,
 {
-    fn deadline(&self) -> Option<Instant> {
-        None
-    }
-
     fn value(&self) -> Option<&Any> {
         let val_any = &self.val as &Any;
         Some(val_any)

@@ -1,6 +1,4 @@
 use std::sync::{Arc, Mutex};
-use std::time;
-use std::any::Any;
 use {Context, InnerContext, ContextError};
 use futures::{Future, Poll, Async};
 use futures::task::{self, Task};
@@ -12,14 +10,6 @@ pub struct WithCancel {
 }
 
 impl InnerContext for WithCancel {
-    fn deadline(&self) -> Option<time::Instant> {
-        None
-    }
-
-    fn value(&self) -> Option<&Any> {
-        None
-    }
-
     fn parent(&self) -> Option<&Context> {
         self.parent.0.parent()
     }
