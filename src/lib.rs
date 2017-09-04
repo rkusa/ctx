@@ -25,10 +25,10 @@ pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
 // #[derive(Clone)]
-pub struct Context(pub Box<InnerContext<Item = (), Error = ContextError>>);
+pub struct Context(pub Box<InnerContext<Item = (), Error = ContextError> + Send>);
 
 impl Context {
-    pub fn new<C: 'static + InnerContext>(ctx: C) -> Self {
+    pub fn new<C: 'static + InnerContext + Send>(ctx: C) -> Self {
         Context(Box::new(ctx))
     }
 
