@@ -24,7 +24,6 @@ pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
-// #[derive(Clone)]
 pub struct Context(pub Box<InnerContext<Item = (), Error = ContextError> + Send>);
 
 impl Context {

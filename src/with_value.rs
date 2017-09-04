@@ -1,6 +1,6 @@
 use std::any::Any;
 use {Context, InnerContext, ContextError};
-use futures::{Future, Poll, Async};
+use futures::{Future, Poll};
 
 pub struct WithValue<V>
 where
@@ -32,7 +32,7 @@ where
     type Error = ContextError;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        Ok(Async::NotReady)
+        self.parent.0.poll()
     }
 }
 
