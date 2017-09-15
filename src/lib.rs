@@ -24,10 +24,10 @@ pub use with_value::{WithValue, with_value};
 pub use with_cancel::{WithCancel, with_cancel};
 pub use with_deadline::{WithDeadline, with_deadline, with_timeout};
 
-pub struct Context(pub Box<InnerContext<Item = (), Error = ContextError> + Send>);
+pub struct Context(pub Box<InnerContext<Item = (), Error = ContextError>>);
 
 impl Context {
-    pub fn new<C: 'static + InnerContext + Send>(ctx: C) -> Self {
+    pub fn new<C: 'static + InnerContext>(ctx: C) -> Self {
         Context(Box::new(ctx))
     }
 

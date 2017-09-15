@@ -4,7 +4,7 @@ use futures::{Future, Poll};
 
 pub struct WithValue<V>
 where
-    V: Any + Send,
+    V: Any,
 {
     parent: Context,
     val: V,
@@ -12,7 +12,7 @@ where
 
 impl<V> InnerContext for WithValue<V>
 where
-    V: Any + Send,
+    V: Any,
 {
     fn value(&self) -> Option<&Any> {
         let val_any = &self.val as &Any;
@@ -26,7 +26,7 @@ where
 
 impl<V> Future for WithValue<V>
 where
-    V: Any + Send,
+    V: Any,
 {
     type Item = ();
     type Error = ContextError;
@@ -59,7 +59,7 @@ where
 /// ```
 pub fn with_value<V>(parent: Context, val: V) -> Context
 where
-    V: Any + Send,
+    V: Any,
 {
     Context::new(WithValue {
         parent: parent,

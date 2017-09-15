@@ -33,7 +33,7 @@ impl Future for WithDeadline {
 }
 
 /// Returns `with_timeout(parent, deadline - Instant::now())`.
-pub fn with_deadline(parent: Context, deadline: Instant) -> (Context, Box<Fn() + Send>) {
+pub fn with_deadline(parent: Context, deadline: Instant) -> (Context, Box<Fn()>) {
     with_timeout(parent, deadline - Instant::now())
 }
 
@@ -59,7 +59,7 @@ pub fn with_deadline(parent: Context, deadline: Instant) -> (Context, Box<Fn() +
 ///     assert_eq!(ctx.wait().unwrap_err(), ContextError::DeadlineExceeded);
 /// }
 /// ```
-pub fn with_timeout(parent: Context, timeout: Duration) -> (Context, Box<Fn() + Send>) {
+pub fn with_timeout(parent: Context, timeout: Duration) -> (Context, Box<Fn()>) {
     let timer = Timer::default();
     let (parent, cancel) = with_cancel(parent);
     let ctx = WithDeadline {
