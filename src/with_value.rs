@@ -75,6 +75,12 @@ mod test {
     use futures::Future;
 
     #[test]
+    fn value_ref() {
+        let a = with_value(background(), 42);
+        assert_eq!(a.value_ref(), Some(&42));
+    }
+
+    #[test]
     fn poll_parent_test() {
         let (parent, cancel) = with_cancel(background());
         let ctx = with_value(parent, 42);

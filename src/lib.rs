@@ -45,6 +45,16 @@ impl Context {
             .map(|v| (*v).clone())
             .or_else(|| self.0.parent().and_then(|parent| parent.value()))
     }
+
+    pub fn value_ref<T>(&self) -> Option<&T>
+    where
+        T: Any,
+    {
+        self.0
+            .value()
+            .and_then(|val_any| val_any.downcast_ref::<T>())
+            .or_else(|| self.0.parent().and_then(|parent| parent.value()))
+    }
 }
 
 impl Future for Context {
